@@ -1,7 +1,7 @@
 {
-  "manifest_version": 2,
-  "name": "New Tab",
-  "version": "1.0",
-  "permissions": ["webNavigation", "browserSettings"],
-  "chrome_url_overrides": { "newtab": "newtab.html" }
+	"manifest_version": 2,
+	"name": "New Simple Clean Tab",
+	"version": "1.0",
+	"permissions": ["webNavigation", "browserSettings", "history"],
+	"chrome_url_overrides": { "newtab": "newtab.html" }
 }
