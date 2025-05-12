@@ -7,7 +7,6 @@
 			? homepageRaw
 			: 'http://' + homepageRaw
 
-		// Rediriger immédiatement vers la page d'accueil
 		window.location.href = homepage
 	} catch (error) {
 		console.error('Error:', error)
