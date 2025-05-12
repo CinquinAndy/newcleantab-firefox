@@ -29,80 +29,90 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 					"Tab identifiée comme nouvel onglet, tentative de nettoyage d'URL..."
 				)
 
-				// Méthode 1: Remplacer l'URL via history.replaceState
+				// Méthode principale: Créer une nouvelle URL transparente
 				try {
 					await browser.tabs.executeScript(tabId, {
 						code: `
-							console.log("Méthode 1: Tentative d'utilisation de history.replaceState")
-							try {
-								history.replaceState({}, document.title, 'about:blank')
-								console.log("history.replaceState exécuté")
-							} catch(e) {
-								console.error("Méthode 1 échouée:", e)
-							}
+							(function() {
+								// Logger le début de notre opération
+								console.log("Tentative de nettoyage de l'URL en cours...");
+								
+								try {
+									// Sauvegarder le contenu actuel et le titre
+									const currentHTML = document.documentElement.outerHTML;
+									const currentTitle = document.title;
+									
+									// Créer une URL de données qui contient le HTML actuel
+									const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(currentHTML);
+									
+									// Remplacer l'URL actuelle par notre URL de données transparente
+									window.location.replace(dataUrl);
+									
+									// Le navigateur va recharger la page mais avec une URL data:
+									console.log("Redirection vers URL data: initiée");
+								} catch(e) {
+									console.error("Échec de la méthode principale:", e);
+								}
+							})();
 						`,
 					})
 				} catch (error) {
-					console.error("Méthode 1 n'a pas pu être exécutée:", error)
+					console.error("Échec d'exécution du script principal:", error)
 				}
 
-				// Méthode 2: Tentative avec navigation dans l'historique
+				// Méthode alternative: Tenter de cliquer dans la barre d'URL après un délai
 				setTimeout(async () => {
 					try {
 						await browser.tabs.executeScript(tabId, {
 							code: `
-								console.log("Méthode 2: Tentative avec manipulation de l'historique")
-								try {
-									// Sauvegarder l'URL actuelle et le titre
-									const currentURL = window.location.href
-									const currentTitle = document.title
+								(function() {
+									console.log("Méthode de focus sur la barre d'URL...");
 									
-									// Ajouter une entrée d'historique bidon
-									history.pushState({}, "New Tab", "about:blank")
-									
-									// Revenir à l'URL originale mais sans changer l'URL visible
-									history.replaceState({}, currentTitle, "about:blank")
-									
-									console.log("Manipulation d'historique effectuée")
-								} catch(e) {
-									console.error("Méthode 2 échouée:", e)
-								}
+									try {
+										// Créer un input temporaire, focus dessus puis le supprimer
+										const input = document.createElement('input');
+										input.style.position = 'fixed';
+										input.style.top = '0';
+										input.style.left = '0';
+										input.style.opacity = '0';
+										
+										document.body.appendChild(input);
+										input.focus();
+										
+										// Presser Escape pour annuler toute complétion auto
+										const escEvent = new KeyboardEvent('keydown', { 
+											key: 'Escape', 
+											code: 'Escape',
+											keyCode: 27, 
+											which: 27,
+											bubbles: true
+										});
+										input.dispatchEvent(escEvent);
+										
+										// Presser Ctrl+L pour aller à la barre d'adresse
+										const ctrlLEvent = new KeyboardEvent('keydown', { 
+											key: 'l', 
+											code: 'KeyL',
+											keyCode: 76, 
+											which: 76,
+											ctrlKey: true,
+											bubbles: true
+										});
+										document.body.dispatchEvent(ctrlLEvent);
+										
+										// Simuler un clic sur la barre d'adresse (pas toujours possible)
+										// Puis supprimer l'élément
+										setTimeout(() => document.body.removeChild(input), 100);
+										
+										console.log("Focus sur la barre d'URL tenté");
+									} catch(e) {
+										console.error("Échec de la méthode de focus:", e);
+									}
+								})();
 							`,
 						})
 					} catch (error) {
-						console.error("Méthode 2 n'a pas pu être exécutée:", error)
-					}
-				}, 500)
-
-				// Méthode 3: Tentative de focus sur la barre d'URL
-				setTimeout(async () => {
-					try {
-						await browser.tabs.executeScript(tabId, {
-							code: `
-								console.log("Méthode 3: Tentative de focus sur la barre d'URL")
-								try {
-									// Créer un élément input temporaire
-									const tmpInput = document.createElement('input')
-									document.body.appendChild(tmpInput)
-									
-									// Focus sur l'input puis le supprimer
-									tmpInput.focus()
-									document.body.removeChild(tmpInput)
-									
-									// Forcer le focus sur la barre d'URL avec un petit délai
-									setTimeout(() => {
-										window.location.href = "about:blank#"
-										history.replaceState({}, document.title, "about:blank")
-									}, 50)
-									
-									console.log("Focus sur la barre d'URL tenté")
-								} catch(e) {
-									console.error("Méthode 3 échouée:", e)
-								}
-							`,
-						})
-					} catch (error) {
-						console.error("Méthode 3 n'a pas pu être exécutée:", error)
+						console.error("Échec d'exécution du script de focus:", error)
 					}
 				}, 1000)
 
