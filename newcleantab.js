@@ -7,6 +7,9 @@
 		: 'http://' + homepageRaw
 	document.querySelector('iframe').src = homepage
 
+	// Set document title
+	document.title = 'New Clean Tab'
+
 	// Clear the URL bar by using history.replaceState
 	history.replaceState(null, document.title, 'about:newtab')
 
