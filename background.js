@@ -8,137 +8,211 @@ browser.tabs.onCreated.addListener(tab => {
 	}
 })
 
-// Listen for tab URL changes
+// Listen for tab updates
 browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-	// Si l'onglet a fini de charger
-	if (changeInfo.status === 'complete') {
+	// Process both loading and complete states
+	if (changeInfo.status === 'loading' || changeInfo.status === 'complete') {
 		try {
-			// Vérifier si cet onglet est le dernier nouvel onglet créé
+			// Check if this tab was created from our extension
 			const data = await browser.storage.local.get([
 				'lastNewTabId',
 				'lastNewTabTime',
 			])
 
-			// Si c'est notre onglet et qu'il a été créé il y a moins de 30 secondes
+			// If this is our tab and it was created recently
 			if (
 				data.lastNewTabId === tabId &&
 				data.lastNewTabTime &&
 				Date.now() - data.lastNewTabTime < 30000
 			) {
 				console.log(
-					"Tab identifiée comme nouvel onglet, tentative de nettoyage d'URL..."
+					`[NewCleanTab] Tab ${tabId} identified as our new tab, status: ${changeInfo.status}, attempting URL cleaning...`
 				)
 
-				// Méthode principale: Créer une nouvelle URL transparente
-				try {
-					await browser.tabs.executeScript(tabId, {
-						code: `
-							(function() {
-								// Logger le début de notre opération
-								console.log("Tentative de nettoyage de l'URL en cours...");
-								
-								try {
-									// Sauvegarder le contenu actuel et le titre
-									const currentHTML = document.documentElement.outerHTML;
-									const currentTitle = document.title;
-									
-									// Créer une URL de données qui contient le HTML actuel
-									const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(currentHTML);
-									
-									// Remplacer l'URL actuelle par notre URL de données transparente
-									window.location.replace(dataUrl);
-									
-									// Le navigateur va recharger la page mais avec une URL data:
-									console.log("Redirection vers URL data: initiée");
-								} catch(e) {
-									console.error("Échec de la méthode principale:", e);
-								}
-							})();
-						`,
-					})
-				} catch (error) {
-					console.error("Échec d'exécution du script principal:", error)
-				}
+				// AGGRESSIVE APPROACH: Try multiple methods in sequence
 
-				// Méthode alternative: Tenter de cliquer dans la barre d'URL après un délai
-				setTimeout(async () => {
+				// 1. First, try to redirect to a blank data URL that will then redirect to the homepage
+				if (changeInfo.status === 'loading') {
 					try {
 						await browser.tabs.executeScript(tabId, {
 							code: `
 								(function() {
-									console.log("Méthode de focus sur la barre d'URL...");
+									console.log("[NewCleanTab] Aggressive loading phase intervention...");
 									
 									try {
-										// Créer un input temporaire, focus dessus puis le supprimer
-										const input = document.createElement('input');
-										input.style.position = 'fixed';
-										input.style.top = '0';
-										input.style.left = '0';
-										input.style.opacity = '0';
-										
-										document.body.appendChild(input);
-										input.focus();
-										
-										// Presser Escape pour annuler toute complétion auto
-										const escEvent = new KeyboardEvent('keydown', { 
-											key: 'Escape', 
-											code: 'Escape',
-											keyCode: 27, 
-											which: 27,
-											bubbles: true
-										});
-										input.dispatchEvent(escEvent);
-										
-										// Presser Ctrl+L pour aller à la barre d'adresse
-										const ctrlLEvent = new KeyboardEvent('keydown', { 
-											key: 'l', 
-											code: 'KeyL',
-											keyCode: 76, 
-											which: 76,
-											ctrlKey: true,
-											bubbles: true
-										});
-										document.body.dispatchEvent(ctrlLEvent);
-										
-										// Simuler un clic sur la barre d'adresse (pas toujours possible)
-										// Puis supprimer l'élément
-										setTimeout(() => document.body.removeChild(input), 100);
-										
-										console.log("Focus sur la barre d'URL tenté");
+										// Store the target URL we want to navigate to
+										if (!sessionStorage.getItem('newCleanTabRedirectUrl')) {
+											sessionStorage.setItem('newCleanTabRedirectUrl', window.location.href);
+											console.log("[NewCleanTab] Stored redirect URL:", window.location.href);
+											
+											// Create a data URL that will handle the redirect with a clean URL
+											const redirectCode = \`
+												<!DOCTYPE html>
+												<html>
+													<head>
+														<title>Redirecting...</title>
+														<script>
+															window.onload = function() {
+																const targetUrl = sessionStorage.getItem('newCleanTabRedirectUrl');
+																if (targetUrl) {
+																	sessionStorage.removeItem('newCleanTabRedirectUrl');
+																	// Use window.location.replace for a cleaner navigation
+																	window.location.replace(targetUrl);
+																	// Try to clean the URL immediately
+																	history.replaceState({}, document.title, 'about:blank');
+																}
+															};
+														</script>
+													</head>
+													<body style="margin:0;padding:0;overflow:hidden;">
+														<div>Loading...</div>
+													</body>
+												</html>
+											\`;
+											
+											// Redirect to the data URL
+											const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(redirectCode);
+											window.location.replace(dataUrl);
+										}
 									} catch(e) {
-										console.error("Échec de la méthode de focus:", e);
+										console.error("[NewCleanTab] Aggressive loading intervention failed:", e);
 									}
 								})();
 							`,
 						})
 					} catch (error) {
-						console.error("Échec d'exécution du script de focus:", error)
+						console.error(
+							'[NewCleanTab] Failed to execute aggressive loading script:',
+							error
+						)
 					}
-				}, 1000)
+				}
 
-				// Nettoyer les données de stockage quoi qu'il arrive
-				await browser.storage.local.remove(['lastNewTabId', 'lastNewTabTime'])
-				console.log(
-					"Nettoyage d'URL terminé (résultat à vérifier visuellement)"
-				)
+				// 2. When complete, try to clean the URL and focus the address bar
+				if (changeInfo.status === 'complete') {
+					try {
+						await browser.tabs.executeScript(tabId, {
+							code: `
+								(function() {
+									console.log("[NewCleanTab] Aggressive complete phase intervention...");
+									
+									try {
+										// Try to clean URL via history API
+										history.replaceState({}, document.title, 'about:blank');
+										console.log("[NewCleanTab] Replaced state with about:blank");
+										
+										// Force focus on address bar using keyboard shortcuts
+										setTimeout(() => {
+											try {
+												// Create an input element to gain focus first
+												const input = document.createElement('input');
+												input.style.position = 'fixed';
+												input.style.top = '0';
+												input.style.left = '0';
+												input.style.opacity = '0';
+												document.body.appendChild(input);
+												input.focus();
+												
+												// Try both common keyboard shortcuts
+												const ctrlLEvent = new KeyboardEvent('keydown', {
+													key: 'l',
+													code: 'KeyL',
+													keyCode: 76,
+													which: 76,
+													ctrlKey: true,
+													bubbles: true
+												});
+												document.body.dispatchEvent(ctrlLEvent);
+												
+												// Remove the temporary input
+												setTimeout(() => document.body.removeChild(input), 100);
+											} catch(e) {
+												console.error("[NewCleanTab] Focus attempt failed:", e);
+											}
+										}, 200);
+									} catch(e) {
+										console.error("[NewCleanTab] URL cleaning failed:", e);
+									}
+								})();
+							`,
+						})
+					} catch (error) {
+						console.error(
+							'[NewCleanTab] Failed to execute URL cleaning script:',
+							error
+						)
+					}
+
+					// Clean up storage only after the complete phase
+					await browser.storage.local.remove(['lastNewTabId', 'lastNewTabTime'])
+					console.log(
+						`[NewCleanTab] Finished URL cleaning attempts for tab ${tabId}`
+					)
+				}
 			}
 		} catch (error) {
-			console.error("Erreur dans le script d'arrière-plan:", error)
+			console.error('[NewCleanTab] Background script error:', error)
 		}
 	}
 })
 
-// Clean up our set when tabs are closed
+// Listen for navigation events to try to catch the very start of navigation
+browser.tabs.onUpdated.addListener(
+	(tabId, changeInfo, tab) => {
+		if (changeInfo.url) {
+			// If we see a URL change, try to clean it immediately
+			browser.storage.local
+				.get(['lastNewTabId', 'lastNewTabTime'])
+				.then(data => {
+					if (
+						data.lastNewTabId === tabId &&
+						data.lastNewTabTime &&
+						Date.now() - data.lastNewTabTime < 30000
+					) {
+						console.log(
+							`[NewCleanTab] URL change detected in tab ${tabId}, attempting early intervention`
+						)
+
+						browser.tabs
+							.executeScript(tabId, {
+								code: `
+						(function() {
+							console.log("[NewCleanTab] Early URL change intervention...");
+							try {
+								history.replaceState({}, document.title, 'about:blank');
+							} catch(e) {
+								console.error("[NewCleanTab] Early URL intervention failed:", e);
+							}
+						})();
+					`,
+							})
+							.catch(error => {
+								console.error(
+									'[NewCleanTab] Failed to execute early URL intervention:',
+									error
+								)
+							})
+					}
+				})
+				.catch(error => {
+					console.error('[NewCleanTab] Error checking tab data:', error)
+				})
+		}
+	},
+	{ urls: ['<all_urls>'] }
+)
+
+// Clean up when tabs are closed
 browser.tabs.onRemoved.addListener(async tabId => {
 	try {
-		// Vérifier si c'était notre onglet suivi
+		// Check if it was our tracked tab
 		const data = await browser.storage.local.get('lastNewTabId')
 		if (data.lastNewTabId === tabId) {
-			// Nettoyer les données
+			// Clean up data
 			await browser.storage.local.remove(['lastNewTabId', 'lastNewTabTime'])
-			console.log("Données nettoyées car l'onglet suivi a été fermé")
+			console.log(`[NewCleanTab] Cleaned up data for closed tab ${tabId}`)
 		}
 	} catch (error) {
-		console.error("Erreur lors du nettoyage à la fermeture d'onglet:", error)
+		console.error('[NewCleanTab] Error during tab cleanup:', error)
 	}
 })

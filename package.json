@@ -1,27 +1,32 @@
 {
 	"name": "new-clean-tab",
 	"version": "1.0.0",
-	"description": "Firefox extension that redirects new tabs with a clean URL",
+	"description": "Firefox extension that redirects new tabs with a clean URL bar",
 	"main": "background.js",
 	"scripts": {
-		"test": "node test-e2e.js",
-		"test:playwright": "node playwright-test.js",
+		"test": "node playwright-test.js",
+		"test:loop": "node playwright-test.js --loop=5",
+		"test:headless": "cross-env HEADLESS=true node playwright-test.js",
 		"build": "zip -r new-clean-tab.zip manifest.json newcleantab.html newcleantab.js background.js icon48.png icon96.png",
-		"clean": "rm -f new-clean-tab.zip test-result.png test-playwright-result.png",
-		"icons": "node icon-generator.js"
+		"clean": "rm -f new-clean-tab.zip test-result-*.png",
+		"icons": "node icon-generator.js",
+		"install:deps": "npm install",
+		"install:extension": "echo 'To install the extension temporarily in Firefox: Open about:debugging > This Firefox > Load Temporary Add-on > Select manifest.json'",
+		"setup": "npm run install:deps && npm run icons && npm run build && npm run install:extension"
 	},
 	"dependencies": {
 		"adm-zip": "^0.5.10"
 	},
 	"devDependencies": {
 		"canvas": "^2.11.2",
-		"playwright": "^1.37.0",
-		"selenium-webdriver": "^4.12.0"
+		"cross-env": "^7.0.3",
+		"playwright": "^1.37.0"
 	},
 	"keywords": [
 		"firefox",
 		"extension",
-		"new tab"
+		"new tab",
+		"clean url"
 	],
 	"author": "",
 	"license": "MPL-2.0"

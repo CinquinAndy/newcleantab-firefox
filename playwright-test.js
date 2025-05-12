@@ -1,20 +1,28 @@
-// Test e2e pour l'extension New Clean Tab avec Playwright
-const { chromium, firefox } = require('playwright')
+// End-to-end testing for New Clean Tab with Playwright
+const { firefox } = require('playwright')
 const fs = require('fs')
 const path = require('path')
 const AdmZip = require('adm-zip')
 
-// Configuration
-const EXTENSION_DIR = __dirname
-const EXTENSION_ZIP = path.join(__dirname, 'new-clean-tab.zip')
-const HOMEPAGE_TEST_URL = 'https://example.com'
+// Configuration - Edit these values as needed
+const CONFIG = {
+	extensionDir: __dirname,
+	extensionZip: path.join(__dirname, 'new-clean-tab.zip'),
+	testHomepage: 'https://example.com',
+	testIterations: 3, // Number of times to repeat the test
+	testTimeout: 2000, // Time to wait for a test iteration (ms)
+	observationTime: 3000, // Time to observe the result (ms)
+	loopDelay: 1000, // Delay between iterations (ms)
+	takeScreenshots: true,
+	cleanTempFiles: true,
+}
 
-// Crée un zip de l'extension
+// Create extension zip
 function createExtensionZip() {
-	console.log("Création du zip de l'extension...")
+	console.log('\n📦 Packaging extension...')
 	const zip = new AdmZip()
 
-	// Ajouter les fichiers essentiels
+	// Add essential files
 	const files = [
 		'manifest.json',
 		'newcleantab.html',
@@ -23,43 +31,43 @@ function createExtensionZip() {
 	]
 
 	files.forEach(file => {
-		const filePath = path.join(EXTENSION_DIR, file)
+		const filePath = path.join(CONFIG.extensionDir, file)
 		if (fs.existsSync(filePath)) {
 			zip.addLocalFile(filePath)
-			console.log(`- Ajout de ${file}`)
+			console.log(`  ✓ Added ${file}`)
 		} else {
-			console.warn(`⚠️ Fichier ${file} manquant`)
+			console.warn(`  ✗ Missing file: ${file}`)
 		}
 	})
 
-	// Vérifier que les icônes existent
+	// Check for icons
 	;['icon48.png', 'icon96.png'].forEach(iconFile => {
-		const iconPath = path.join(EXTENSION_DIR, iconFile)
+		const iconPath = path.join(CONFIG.extensionDir, iconFile)
 		if (fs.existsSync(iconPath)) {
 			zip.addLocalFile(iconPath)
-			console.log(`- Ajout de ${iconFile}`)
+			console.log(`  ✓ Added ${iconFile}`)
 		} else {
-			console.warn(
-				`⚠️ Icône ${iconFile} manquante, assurez-vous de les générer avec node icon-generator.js`
-			)
+			console.warn(`  ✗ Missing icon: ${iconFile}. Run: npm run icons`)
 		}
 	})
 
-	// Sauvegarder le zip
-	zip.writeZip(EXTENSION_ZIP)
-	console.log(`✅ Extension packagée dans ${EXTENSION_ZIP}`)
+	// Save zip
+	zip.writeZip(CONFIG.extensionZip)
+	console.log(`  ✓ Extension packaged to ${CONFIG.extensionZip}`)
 
-	return EXTENSION_ZIP
+	return CONFIG.extensionZip
 }
 
-// Test de l'extension
-async function testExtension() {
-	console.log('🚀 Démarrage des tests e2e avec Playwright...')
+// Test the extension in a loop
+async function runTestLoop() {
+	console.log('\n�� Starting e2e tests with Playwright...')
+	console.log(`  • Will run ${CONFIG.testIterations} test iterations`)
+	console.log(`  • Target homepage: ${CONFIG.testHomepage}`)
 
-	// Créer le zip de l'extension
+	// Create extension zip
 	const extensionPath = createExtensionZip()
 
-	// Dézipper dans un dossier temporaire pour Playwright
+	// Extract to temp directory
 	const tempExtDir = path.join(__dirname, 'temp-extension')
 	if (fs.existsSync(tempExtDir)) {
 		fs.rmSync(tempExtDir, { recursive: true, force: true })
@@ -68,84 +76,137 @@ async function testExtension() {
 
 	const zip = new AdmZip(extensionPath)
 	zip.extractAllTo(tempExtDir, true)
+	console.log('  ✓ Extension extracted to temp directory')
 
-	// Lancer Firefox avec l'extension
+	// Launch Firefox with the extension
+	console.log('\n🦊 Launching Firefox...')
 	const browser = await firefox.launchPersistentContext(
 		'.playwright-firefox-profile',
 		{
 			headless: false,
 			viewport: { width: 1280, height: 720 },
 			args: [`--load-extension=${tempExtDir}`],
-			// Remplacer le Nouvel Onglet par notre extension
 			firefoxUserPrefs: {
-				'browser.startup.homepage': HOMEPAGE_TEST_URL,
+				'browser.startup.homepage': CONFIG.testHomepage,
 				'browser.newtabpage.enabled': false,
 				'browser.startup.page': 1,
 				'devtools.console.stdout.content': true,
+				'devtools.browsertoolbox.fission': true,
 			},
 		}
 	)
 
+	// Test results summary
+	const results = {
+		total: CONFIG.testIterations,
+		redirected: 0,
+		urlCleaned: 0,
+		failures: 0,
+	}
+
 	try {
-		// Ouvrir une nouvelle page
-		console.log("Ouverture d'un nouvel onglet...")
-		const page = await browser.newPage()
+		// Open console in first page to see logs
+		const initialPage = await browser.newPage()
+		await initialPage.goto('about:blank')
+		console.log('  ✓ Browser launched with extension')
 
-		// Attendre un peu pour que la page charge
-		await page.waitForTimeout(2000)
+		// Run tests in a loop
+		console.log('\n🔄 Running tests in a loop...')
+		for (let i = 0; i < CONFIG.testIterations; i++) {
+			console.log(`\n▶️ Test iteration ${i + 1}/${CONFIG.testIterations}:`)
 
-		// Déterminer si nous avons été redirigés vers la page d'accueil
-		const currentUrl = page.url()
-		console.log(`URL actuelle: ${currentUrl}`)
+			// Open a new tab
+			console.log('  • Opening new tab...')
+			const page = await browser.newPage()
 
-		// Vérifier le résultat
-		if (currentUrl === 'about:blank' || currentUrl === 'about:newtab') {
-			console.log('✅ URL nettoyée avec succès!')
-		} else if (currentUrl === HOMEPAGE_TEST_URL) {
-			console.log("✅ Redirection vers la page d'accueil réussie!")
-			console.log("⚠️ L'URL n'a pas été nettoyée après redirection")
+			// Wait for redirect
+			console.log(`  • Waiting ${CONFIG.testTimeout}ms for redirect...`)
+			await page.waitForTimeout(CONFIG.testTimeout)
 
-			// Vérifier visuellement si la barre d'URL est vide
-			console.log('🔍 Analyse visuelle...')
-			console.log(
-				"Note: Impossible de vérifier programmatiquement le contenu de la barre d'URL"
-			)
-			console.log(
-				"     Veuillez vérifier visuellement si la barre d'URL est vide"
-			)
-		} else {
-			console.log(
-				'❌ Comportement inattendu. URL ni nettoyée ni redirigée correctement.'
-			)
+			// Check current URL
+			const currentUrl = page.url()
+			console.log(`  • Current URL: ${currentUrl}`)
+
+			// Evaluate result
+			if (
+				currentUrl === 'about:blank' ||
+				currentUrl === 'about:newtab' ||
+				currentUrl.startsWith('data:')
+			) {
+				console.log('  ✅ URL cleaned successfully!')
+				results.urlCleaned++
+				results.redirected++
+			} else if (currentUrl === CONFIG.testHomepage) {
+				console.log('  ✅ Redirected to homepage')
+				console.log('  ⚠️ URL not cleaned')
+				results.redirected++
+			} else {
+				console.log('  ❌ Unexpected behavior. URL not redirected or cleaned.')
+				results.failures++
+			}
+
+			// Take screenshot
+			if (CONFIG.takeScreenshots) {
+				await page.screenshot({
+					path: `test-result-${i + 1}.png`,
+					fullPage: true,
+				})
+				console.log(`  📸 Screenshot saved to test-result-${i + 1}.png`)
+			}
+
+			// Allow manual observation
+			if (i === CONFIG.testIterations - 1) {
+				console.log(
+					`  ⏳ Waiting ${
+						CONFIG.observationTime / 1000
+					}s for final observation...`
+				)
+				await page.waitForTimeout(CONFIG.observationTime)
+			}
+
+			// Close tab unless it's the last iteration
+			if (i < CONFIG.testIterations - 1) {
+				await page.close()
+				console.log('  • Tab closed, waiting for next iteration...')
+				await new Promise(resolve => setTimeout(resolve, CONFIG.loopDelay))
+			}
 		}
 
-		// Prendre une capture d'écran (utile pour vérifier l'état de la barre d'URL)
-		await page.screenshot({
-			path: 'test-playwright-result.png',
-			fullPage: true,
-		})
+		// Print results summary
+		console.log('\n📊 Test Results Summary:')
+		console.log(`  • Total iterations: ${results.total}`)
 		console.log(
-			"📸 Capture d'écran sauvegardée dans test-playwright-result.png"
+			`  • Successful redirects: ${results.redirected} (${Math.round(
+				(results.redirected / results.total) * 100
+			)}%)`
 		)
+		console.log(
+			`  • URL cleaning success: ${results.urlCleaned} (${Math.round(
+				(results.urlCleaned / results.total) * 100
+			)}%)`
+		)
+		console.log(`  • Failures: ${results.failures}`)
 
-		// Attendre 5 secondes pour observer manuellement le comportement
-		console.log('⏳ Attente de 5 secondes pour observation manuelle...')
-		await page.waitForTimeout(5000)
-
-		console.log('🏁 Test terminé!')
+		console.log('\n🏁 Testing complete!')
 	} catch (error) {
-		console.error('❌ Erreur lors des tests:', error)
+		console.error('\n❌ Test error:', error)
 	} finally {
-		// Fermer le navigateur
+		// Close browser
 		await browser.close()
-		console.log('🧹 Playwright terminé')
+		console.log('\n🧹 Browser closed')
 
-		// Nettoyer les fichiers temporaires
-		if (fs.existsSync(tempExtDir)) {
-			fs.rmSync(tempExtDir, { recursive: true, force: true })
+		// Clean up temporary files
+		if (CONFIG.cleanTempFiles) {
+			if (fs.existsSync(tempExtDir)) {
+				fs.rmSync(tempExtDir, { recursive: true, force: true })
+			}
+			console.log('  ✓ Temporary files cleaned up')
 		}
 	}
 }
 
-// Lancer les tests
-testExtension().catch(console.error)
+// Run the test loop
+runTestLoop().catch(err => {
+	console.error('Fatal error:', err)
+	process.exit(1)
+})

@@ -1,20 +1,13 @@
 {
 	"manifest_version": 2,
 	"name": "New Clean Tab",
-	"version": "1.0",
-	"description": "A simple clean new tab page that redirects to your homepage with a clean URL",
+	"version": "1.0.0",
+	"description": "Redirects new tabs to your homepage with a clean URL bar",
 	"icons": {
 		"48": "icon48.png",
 		"96": "icon96.png"
 	},
-	"permissions": [
-		"browserSettings",
-		"tabs",
-		"activeTab",
-		"webNavigation",
-		"storage",
-		"<all_urls>"
-	],
+	"permissions": ["browserSettings", "storage", "tabs"],
 	"background": {
 		"scripts": ["background.js"]
 	},

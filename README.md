@@ -1,126 +1,117 @@
 # New Clean Tab
 
-Une extension Firefox qui redirige les nouveaux onglets vers votre page d'accueil, tout en tentant de maintenir une URL propre dans la barre d'adresse.
+A Firefox extension that redirects new tabs to your homepage while attempting to clear the URL bar.
 
-## Installation pour le développement
+## What does this extension do?
 
-1. Clonez ce dépôt
-2. Installez les dépendances de développement avec `npm install`
-3. Installez l'extension temporairement dans Firefox:
-   - Ouvrez Firefox
-   - Naviguez vers `about:debugging`
-   - Cliquez sur "Ce Firefox"
-   - Cliquez sur "Charger un module complémentaire temporaire..."
-   - Sélectionnez le fichier `manifest.json` de ce projet
+1. When you open a new tab in Firefox, it redirects to your configured homepage
+2. It attempts to clean the URL bar after redirection to allow immediate typing
+3. It provides a seamless Chrome-like new tab experience in Firefox
 
-## Tests E2E
+## Installation for Development
 
-Ce projet inclut deux systèmes de test end-to-end qui vous permettent de vérifier le fonctionnement de l'extension.
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/new-clean-tab.git
+cd new-clean-tab
 
-### Prérequis pour les tests
-
-1. NodeJS et NPM installés
-2. Firefox installé (de préférence Firefox Developer Edition)
-3. Pour les tests Selenium, Geckodriver installé:
-   ```
-   npm install -g geckodriver
-   ```
-
-### Préparation des tests
-
-1. Installez les dépendances:
-
-   ```
-   npm install
-   ```
-
-2. Générez les icônes requises:
-   ```
-   npm run icons
-   ```
-
-### Exécution des tests
-
-#### Tests avec Playwright (recommandé)
-
-Lancez les tests avec Playwright:
-
-```
-npm run test:playwright
+# Run the setup script (installs dependencies, generates icons, builds extension)
+npm run setup
 ```
 
-Playwright offre:
+## Manual Installation in Firefox
 
-- Une meilleure intégration avec Firefox
-- Une observation visuelle plus facile (mode graphique)
-- Une pause de 5 secondes à la fin pour observer le résultat
+1. Open Firefox
+2. Navigate to `about:debugging`
+3. Click "This Firefox"
+4. Click "Load Temporary Add-on..."
+5. Select the `manifest.json` file from this project
 
-#### Tests avec Selenium (alternative)
+## Testing with End-to-End Tests
 
-Lancez les tests avec Selenium:
+This project includes a comprehensive testing system using Playwright that runs multiple iterations to verify the extension's behavior.
 
-```
+### Running the Tests
+
+```bash
+# Standard test (3 iterations)
 npm test
+
+# Extended test with more iterations
+npm run test:loop
+
+# Headless test (for CI environments)
+npm run test:headless
 ```
 
-### Cycle de développement
+The tests will:
 
-Pour un cycle de développement rapide:
+1. Package the extension into a zip file
+2. Launch Firefox with the extension installed
+3. Open new tabs in a loop to test the extension
+4. Check if the redirection works and if the URL is cleaned
+5. Take screenshots of the results
+6. Generate a test summary report
 
-1. Modifiez le code de l'extension (background.js, newcleantab.js, etc.)
-2. Exécutez `npm run test:playwright` pour tester vos modifications
-3. Observez visuellement le comportement et vérifiez les logs de console
-4. Vérifiez la capture d'écran générée
-5. Répétez jusqu'à obtenir le comportement désiré
+### Test Configuration
 
-### Nettoyage
+You can modify the test configuration in `playwright-test.js`:
 
-Pour nettoyer les fichiers temporaires:
-
+```javascript
+const CONFIG = {
+	testIterations: 3, // Number of test iterations
+	testTimeout: 2000, // How long to wait for each test (ms)
+	observationTime: 3000, // Time to observe the final result (ms)
+	// ... other settings
+}
 ```
-npm run clean
-```
 
-## Méthodes implémentées pour nettoyer l'URL
+## Development Workflow
 
-Cette extension utilise plusieurs approches pour tenter de nettoyer l'URL:
+1. Make changes to the extension code
+2. Run the tests: `npm test`
+3. Check the test results and screenshots
+4. Repeat until you achieve the desired behavior
 
-1. **Méthode principale**: Remplace la page actuelle par une version "data:URL" qui contient le même contenu mais avec une URL propre.
+## How URL Cleaning Works
 
-2. **Méthode alternative**: Tente de forcer le focus sur la barre d'URL en:
-   - Créant un champ de texte temporaire
-   - Utilisant le raccourci clavier Ctrl+L (commande universelle pour sélectionner la barre d'adresse)
-   - Simulant des événements de touches pour effacer la barre d'adresse
+The extension uses two approaches to clean the URL bar:
 
-## Structure des fichiers
+1. **Data URL Approach**: Replaces the page with a data URL containing the same content
+2. **Focus Approach**: Attempts to focus the address bar and clear it
 
-- `manifest.json`: Configuration de l'extension
-- `newcleantab.html`: Page HTML pour le nouvel onglet
-- `newcleantab.js`: Script principal de l'extension
-- `background.js`: Script d'arrière-plan pour la manipulation de l'URL
-- `test-e2e.js`: Script de test avec Selenium
-- `playwright-test.js`: Script de test avec Playwright
-- `icon-generator.js`: Générateur d'icônes pour les tests
-- `icon48.png` & `icon96.png`: Icônes de l'extension
+Due to browser security restrictions, these methods are best-effort and may not work in all cases.
 
-## Conseils pour déboguer l'extension
+## Project Structure
 
-1. Utilisez `about:debugging` et "Inspecter" pour voir les logs du background script
-2. Observez les tests Playwright qui s'exécutent visuellement
-3. Examinez les captures d'écran générées
-4. Si l'URL n'est pas nettoyée, essayez d'autres approches dans `background.js`
+- `manifest.json`: Extension configuration
+- `newcleantab.html`: HTML for the new tab page
+- `newcleantab.js`: Main script that redirects to homepage
+- `background.js`: Background script for URL cleaning
+- `playwright-test.js`: End-to-end testing script
+- `icon-generator.js`: Script to generate extension icons
+- `package.json`: NPM configuration and scripts
 
-## Alternatives pour nettoyer l'URL
+## Available NPM Scripts
 
-Si le nettoyage d'URL après redirection ne fonctionne pas, vous pouvez envisager:
+- `npm test`: Run the tests
+- `npm run test:loop`: Run tests with more iterations
+- `npm run test:headless`: Run tests in headless mode
+- `npm run build`: Package the extension into a zip file
+- `npm run icons`: Generate extension icons
+- `npm run clean`: Clean temporary files
+- `npm run setup`: Full setup (install deps, generate icons, build)
 
-1. Créer une page avec des liens rapides vers vos sites préférés
-2. Modifier la page nouvel onglet pour afficher le site dans un iframe (peut être bloqué)
-3. Utiliser une extension qui remplace complètement la page nouvel onglet
+## Known Limitations
 
-## Limitations connues
+- Browser security policies limit the ability to manipulate the URL after redirection
+- Some websites use Content Security Policy headers that prevent URL manipulation
+- URL clearing is a best-effort approach and may not work on all sites
 
-- Les politiques de sécurité des navigateurs modernes limitent la capacité à manipuler l'URL après redirection
-- Les extensions peuvent avoir des limitations d'accès à la barre d'URL pour des raisons de sécurité
-- Certains sites utilisent des en-têtes CSP qui bloquent les manipulations de l'historique
-- L'effacement de l'URL est une "meilleure tentative" et peut ne pas fonctionner sur tous les sites
+## Alternatives if URL Cleaning Fails
+
+If automatic URL cleaning doesn't work due to browser security restrictions:
+
+1. Create a custom new tab page with quick links to favorite sites
+2. Use keyboard shortcuts (Alt+D or Ctrl+L) to focus the address bar manually
+3. Consider using a different extension approach that doesn't require URL cleaning
