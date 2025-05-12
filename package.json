@@ -1,0 +1,23 @@
+{
+	"name": "new-clean-tab",
+	"version": "1.0.0",
+	"description": "Firefox extension that redirects new tabs with a clean URL",
+	"main": "background.js",
+	"scripts": {
+		"test": "node test-e2e.js",
+		"build": "zip -r new-clean-tab.zip manifest.json newcleantab.html newcleantab.js background.js icon48.png icon96.png",
+		"clean": "rm -f new-clean-tab.zip test-result.png"
+	},
+	"dependencies": {
+		"adm-zip": "^0.5.10",
+		"selenium-webdriver": "^4.12.0"
+	},
+	"devDependencies": {},
+	"keywords": [
+		"firefox",
+		"extension",
+		"new tab"
+	],
+	"author": "",
+	"license": "MPL-2.0"
+}
