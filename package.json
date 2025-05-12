@@ -1,14 +1,11 @@
 {
 	"name": "new-clean-tab",
 	"version": "1.0.0",
-	"description": "Firefox extension that redirects new tabs with a clean URL bar",
-	"main": "background.js",
+	"description": "Firefox extension that redirects new tabs to your homepage",
+	"main": "newcleantab.js",
 	"scripts": {
-		"test": "node playwright-test.js",
-		"test:loop": "node playwright-test.js --loop=5",
-		"test:headless": "cross-env HEADLESS=true node playwright-test.js",
-		"build": "zip -r new-clean-tab.zip manifest.json newcleantab.html newcleantab.js background.js icon48.png icon96.png",
-		"clean": "rm -f new-clean-tab.zip test-result-*.png",
+		"build": "zip -r new-clean-tab.zip manifest.json newcleantab.html newcleantab.js icon48.png icon96.png",
+		"clean": "rm -f new-clean-tab.zip",
 		"icons": "node icon-generator.js",
 		"install:deps": "npm install",
 		"install:extension": "echo 'To install the extension temporarily in Firefox: Open about:debugging > This Firefox > Load Temporary Add-on > Select manifest.json'",
@@ -18,15 +15,12 @@
 		"adm-zip": "^0.5.10"
 	},
 	"devDependencies": {
-		"canvas": "^2.11.2",
-		"cross-env": "^7.0.3",
-		"playwright": "^1.37.0"
+		"canvas": "^2.11.2"
 	},
 	"keywords": [
 		"firefox",
 		"extension",
-		"new tab",
-		"clean url"
+		"new tab"
 	],
 	"author": "",
 	"license": "MPL-2.0"

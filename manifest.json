@@ -2,14 +2,11 @@
 	"manifest_version": 2,
 	"name": "New Clean Tab",
 	"version": "1.0.0",
-	"description": "Redirects new tabs to your homepage with a clean URL bar",
+	"description": "Redirects new tabs to your homepage",
 	"icons": {
 		"48": "icon48.png",
 		"96": "icon96.png"
 	},
-	"permissions": ["browserSettings", "storage", "tabs"],
-	"background": {
-		"scripts": ["background.js"]
-	},
+	"permissions": ["browserSettings"],
 	"chrome_url_overrides": { "newtab": "newcleantab.html" }
 }
