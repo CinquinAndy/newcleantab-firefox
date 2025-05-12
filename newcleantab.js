@@ -26,9 +26,31 @@
 
 		console.log(`[NewCleanTab] Homepage configured as: ${homepage}`)
 
-		// Redirect to homepage
-		console.log(`[NewCleanTab] Redirecting to homepage...`)
-		window.location.href = homepage
+		// Create a data URL that will handle the redirect
+		const redirectCode = `
+			<!DOCTYPE html>
+			<html>
+				<head>
+					<title>Redirecting...</title>
+					<script>
+						// Execute immediately
+						window.location.replace("${homepage}");
+						// Try to clean URL
+						history.replaceState({}, document.title, 'about:blank');
+					</script>
+				</head>
+				<body style="margin:0;padding:0;overflow:hidden;">
+					<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#888;">
+						Loading homepage...
+					</div>
+				</body>
+			</html>
+		`
+
+		// Redirect to the data URL
+		const dataUrl =
+			'data:text/html;charset=utf-8,' + encodeURIComponent(redirectCode)
+		window.location.replace(dataUrl)
 	} catch (error) {
 		console.error('[NewCleanTab] Error:', error)
 		const loadingElement = document.getElementById('loading')
